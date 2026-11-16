@@ -1,0 +1,6 @@
+{
+  "name": "خَزْنَتِي — منظم الحسابات والهويات الرقمية",
+  "description": "نظام متطور لتنظيم البريد الإلكتروني والحسابات المرتبطة وكلمات المرور وتواريخ الميلاد والإنشاء وبيانات الاسترداد.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

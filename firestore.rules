@@ -1,0 +1,200 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Deny all access by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedOwner(userId) {
+      return isSignedIn()
+        && request.auth.uid == userId
+        && request.auth.token.email_verified == true;
+    }
+
+    function isValidDateString(val) {
+      return val is string && val.size() <= 20 && val.matches('^(\\d{4}-\\d{2}-\\d{2})?$');
+    }
+
+    function isValidSecurityQuestionList(list) {
+      return list is list
+        && list.size() <= 5
+        && (
+          list.size() == 0
+          || (
+            list[0] is map
+            && list[0].keys().hasAll(['question', 'answer'])
+            && list[0].keys().hasOnly(['question', 'answer'])
+            && list[0].question is string && list[0].question.size() <= 200
+            && list[0].answer is string && list[0].answer.size() <= 200
+          )
+        );
+    }
+
+    function isValidVaultAccount(data, userId, accountId) {
+      return data.keys().hasAll([
+        'id', 'ownerId', 'recordType', 'title', 'platformKey', 'category',
+        'emailAddress', 'parentEmailId', 'username', 'displayName', 'password',
+        'loginMethod', 'websiteUrl', 'phoneNumber', 'recoveryEmail', 'recoveryPhone',
+        'registeredBirthdate', 'accountCreatedAt', 'lastPasswordChangedAt',
+        'twoFactorEnabled', 'twoFactorMethod', 'backupCodes', 'securityQuestions',
+        'pinCode', 'subscriptionStatus', 'subscriptionCost', 'renewalDate',
+        'primaryDevice', 'status', 'isFavorite', 'notes', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'id', 'ownerId', 'recordType', 'title', 'platformKey', 'category',
+        'emailAddress', 'parentEmailId', 'username', 'displayName', 'password',
+        'loginMethod', 'websiteUrl', 'phoneNumber', 'recoveryEmail', 'recoveryPhone',
+        'registeredBirthdate', 'accountCreatedAt', 'lastPasswordChangedAt',
+        'twoFactorEnabled', 'twoFactorMethod', 'backupCodes', 'securityQuestions',
+        'pinCode', 'subscriptionStatus', 'subscriptionCost', 'renewalDate',
+        'primaryDevice', 'status', 'isFavorite', 'notes', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.id)
+      && data.id == accountId
+      && isValidId(data.ownerId)
+      && data.ownerId == userId
+      && data.ownerId == request.auth.uid
+      && data.recordType in ['email', 'app']
+      && data.title is string && data.title.size() >= 1 && data.title.size() <= 120
+      && data.platformKey is string && data.platformKey.size() <= 60
+      && data.category in ['email', 'social', 'work', 'finance', 'gaming', 'entertainment', 'shopping', 'government', 'education', 'other']
+      && data.emailAddress is string && data.emailAddress.size() <= 160
+      && data.parentEmailId is string && data.parentEmailId.size() <= 128
+      && (data.parentEmailId == '' || isValidId(data.parentEmailId))
+      && data.username is string && data.username.size() <= 120
+      && data.displayName is string && data.displayName.size() <= 120
+      && data.password is string && data.password.size() <= 512
+      && data.loginMethod in ['email_password', 'google_oauth', 'apple_id', 'phone_otp', 'username_password', 'sso']
+      && data.websiteUrl is string && data.websiteUrl.size() <= 300
+      && data.phoneNumber is string && data.phoneNumber.size() <= 40
+      && data.recoveryEmail is string && data.recoveryEmail.size() <= 160
+      && data.recoveryPhone is string && data.recoveryPhone.size() <= 40
+      && isValidDateString(data.registeredBirthdate)
+      && isValidDateString(data.accountCreatedAt)
+      && isValidDateString(data.lastPasswordChangedAt)
+      && data.twoFactorEnabled is bool
+      && data.twoFactorMethod in ['none', 'authenticator', 'sms', 'email', 'hardware_key', 'biometric']
+      && data.backupCodes is string && data.backupCodes.size() <= 1000
+      && isValidSecurityQuestionList(data.securityQuestions)
+      && data.pinCode is string && data.pinCode.size() <= 32
+      && data.subscriptionStatus in ['none', 'free', 'monthly', 'yearly', 'lifetime']
+      && data.subscriptionCost is string && data.subscriptionCost.size() <= 40
+      && isValidDateString(data.renewalDate)
+      && data.primaryDevice is string && data.primaryDevice.size() <= 100
+      && data.status in ['active', 'suspended', 'needs_update', 'archived']
+      && data.isFavorite is bool
+      && data.notes is string && data.notes.size() <= 2000
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidVaultPreferences(data, userId) {
+      return data.keys().hasAll([
+        'ownerId', 'realBirthdate', 'vaultPinHash', 'autoLockMinutes', 'theme', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'ownerId', 'realBirthdate', 'vaultPinHash', 'autoLockMinutes', 'theme', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.ownerId)
+      && data.ownerId == userId
+      && data.ownerId == request.auth.uid
+      && isValidDateString(data.realBirthdate)
+      && data.vaultPinHash is string && data.vaultPinHash.size() <= 128
+      && data.autoLockMinutes is number && data.autoLockMinutes >= 0 && data.autoLockMinutes <= 120
+      && data.theme in ['light', 'dark']
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    match /users/{userId}/accounts/{accountId} {
+      allow get: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(accountId);
+      allow list: if isVerifiedOwner(userId) && isValidId(userId) && resource.data.ownerId == request.auth.uid;
+
+      allow create: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidId(accountId)
+        && isValidVaultAccount(incoming(), userId, accountId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          incoming().parentEmailId == ''
+          || exists(/databases/$(database)/documents/users/$(userId)/accounts/$(incoming().parentEmailId))
+        );
+
+      allow update: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidId(accountId)
+        && isValidVaultAccount(incoming(), userId, accountId)
+        && incoming().id == existing().id
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().parentEmailId == ''
+          || exists(/databases/$(database)/documents/users/$(userId)/accounts/$(incoming().parentEmailId))
+        )
+        && (
+          // Action: Toggle favorite
+          incoming().diff(existing()).affectedKeys().hasOnly(['isFavorite', 'updatedAt'])
+          ||
+          // Action: Edit full account details
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'recordType', 'title', 'platformKey', 'category', 'emailAddress', 'parentEmailId',
+            'username', 'displayName', 'password', 'loginMethod', 'websiteUrl', 'phoneNumber',
+            'recoveryEmail', 'recoveryPhone', 'registeredBirthdate', 'accountCreatedAt',
+            'lastPasswordChangedAt', 'twoFactorEnabled', 'twoFactorMethod', 'backupCodes',
+            'securityQuestions', 'pinCode', 'subscriptionStatus', 'subscriptionCost',
+            'renewalDate', 'primaryDevice', 'status', 'isFavorite', 'notes', 'updatedAt'
+          ])
+        );
+
+      allow delete: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(accountId);
+    }
+
+    match /users/{userId}/preferences/{prefId} {
+      allow get: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(prefId) && prefId == 'profile';
+      allow list: if isVerifiedOwner(userId) && isValidId(userId) && resource.data.ownerId == request.auth.uid;
+
+      allow create: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidId(prefId)
+        && prefId == 'profile'
+        && isValidVaultPreferences(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidId(prefId)
+        && prefId == 'profile'
+        && isValidVaultPreferences(incoming(), userId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'realBirthdate', 'vaultPinHash', 'autoLockMinutes', 'theme', 'updatedAt'
+        ]);
+
+      allow delete: if isVerifiedOwner(userId) && isValidId(userId) && isValidId(prefId) && prefId == 'profile';
+    }
+  }
+}

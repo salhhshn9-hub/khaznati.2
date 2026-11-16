@@ -1,0 +1,45 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install dependencies & build web app
+        run: |
+          npm install
+          npm run build
+
+      - name: Setup Capacitor Android & build APK
+        run: |
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "Khaznati" "com.khaznati.vault" --web-dir dist
+          npx cap add android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: khaznati-android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
