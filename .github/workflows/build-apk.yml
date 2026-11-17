@@ -26,14 +26,18 @@ jobs:
 
       - name: Install dependencies & build web app
         run: |
-          npm install
+          npm install --legacy-peer-deps
           npm run build
 
       - name: Setup Capacitor Android & build APK
         run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-          npx cap init "Khaznati" "com.khaznati.vault" --web-dir dist
-          npx cap add android
+          npm install --legacy-peer-deps @capacitor/core @capacitor/cli @capacitor/android
+          if [ ! -f capacitor.config.json ] && [ ! -f capacitor.config.ts ]; then
+            npx cap init "Khaznati" "com.khaznati.vault" --web-dir dist
+          fi
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
